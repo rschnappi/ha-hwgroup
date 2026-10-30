@@ -84,14 +84,11 @@ async def test_install_downloads_uploads_and_verifies(hass, poseidon_entry, aioc
     assert len(posts) == 1 and str(posts[0][1]).endswith("/upload")
     body = posts[0][2]
     # Teile-Reihenfolge wie curl: Content-Disposition zuerst, kein Content-Type beim Submit-Feld
-    assert b'Content-Disposition: form-data; name="filename"; filename="posdam2_3-10-0.hwg"
-Content-Type: application/octet-stream
-
-' in body
-    assert b'Content-Disposition: form-data; name="Submit"
-
-Upload
-' in body
+    assert (
+        b'Content-Disposition: form-data; name="filename"; filename="posdam2_3-10-0.hwg"\r\n'
+        b"Content-Type: application/octet-stream\r\n\r\n"
+    ) in body
+    assert b'Content-Disposition: form-data; name="Submit"\r\n\r\nUpload\r\n' in body
 
 
 async def test_install_fails_when_device_keeps_old_version(hass, poseidon_entry, aioclient_mock, monkeypatch):

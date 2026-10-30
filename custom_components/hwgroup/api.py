@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import uuid
 from urllib.parse import quote
 from xml.sax.saxutils import escape
@@ -123,27 +124,18 @@ class HWGroupApi:
         built by hand instead of with aiohttp.FormData.
         """
         boundary = "----------------------hwgroup" + uuid.uuid4().hex
-        safe_name = filename.replace('"', "").replace("", "").replace("
-", "")
-        body = (
-            f"--{boundary}
-"
-            f'Content-Disposition: form-data; name="filename"; filename="{safe_name}"
-'
-            "Content-Type: application/octet-stream
-
-"
-        ).encode() + payload + (
-            f"
---{boundary}
-"
-            'Content-Disposition: form-data; name="Submit"
-
-'
-            f"Upload
---{boundary}--
-"
-        ).encode()
+        safe_name = re.sub(r'["\r\n]', "", filename)
+        head = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="filename"; filename="{safe_name}"\r\n'
+            "Content-Type: application/octet-stream\r\n\r\n"
+        )
+        tail = (
+            f"\r\n--{boundary}\r\n"
+            'Content-Disposition: form-data; name="Submit"\r\n\r\n'
+            f"Upload\r\n--{boundary}--\r\n"
+        )
+        body = head.encode() + payload + tail.encode()
         try:
             async with self._session.post(
                 f"{self.base_url}/upload",
