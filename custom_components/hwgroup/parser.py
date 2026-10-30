@@ -105,6 +105,8 @@ class Channel:
     value: float | str | None
     unit: str = ""
     alarm: str | None = None
+    # nur Ausgaenge: 0 = manuell (Value beschreibbar), sonst lokale Logik des Geraets
+    mode: int | None = None
 
     @property
     def is_on(self) -> bool | None:
@@ -172,6 +174,7 @@ def _parse_channel(entry: ElementTree.Element, default_prefix: str) -> Channel |
         value=value,
         unit=_text(entry, "Units") or _text(entry, "Unit") or "",
         alarm=_text(entry, "State"),
+        mode=(int(mode) if (mode := parse_number(_text(entry, "Mode"))) is not None else None),
     )
 
 
@@ -228,6 +231,11 @@ def parse_status(raw: bytes | str) -> dict[str, float | int | str]:
 
     if (text := _text(root, "pin_tstatus")) is not None:
         status["sim_status"] = text
+    # Firmware-Update, das das Gateway selbst gefunden/geladen hat (z. B. "1.4.1.2958")
+    if (text := _text(root, "nuv")) is not None:
+        status["update_version"] = text
+    if (text := _text(root, "nus")) is not None:
+        status["update_state"] = text
     return status
 
 
