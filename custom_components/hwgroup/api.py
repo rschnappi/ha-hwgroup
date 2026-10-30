@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
+import uuid
 from urllib.parse import quote
 from xml.sax.saxutils import escape
 
@@ -115,24 +117,41 @@ class HWGroupApi:
         return parse_values(await self._get("values.xml")).info.version
 
     async def async_upload_firmware(self, payload: bytes, filename: str) -> None:
-        """Upload a .hwg firmware to the web upload form; the device flashes and restarts."""
-        form = aiohttp.FormData()
-        form.add_field(
-            "filename", payload, filename=filename, content_type="application/octet-stream"
+        """Upload a .hwg firmware to the web upload form; the device flashes and restarts.
+
+        The device's small web server only accepts the multipart layout curl sends
+        (Content-Disposition before Content-Type, no extra part headers), so the body is
+        built by hand instead of with aiohttp.FormData.
+        """
+        boundary = "----------------------hwgroup" + uuid.uuid4().hex
+        safe_name = re.sub(r'["\r\n]', "", filename)
+        head = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="filename"; filename="{safe_name}"\r\n'
+            "Content-Type: application/octet-stream\r\n\r\n"
         )
-        form.add_field("Submit", "Upload")
+        tail = (
+            f"\r\n--{boundary}\r\n"
+            'Content-Disposition: form-data; name="Submit"\r\n\r\n'
+            f"Upload\r\n--{boundary}--\r\n"
+        )
+        body = head.encode() + payload + tail.encode()
         try:
             async with self._session.post(
                 f"{self.base_url}/upload",
-                data=form,
+                data=body,
+                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
                 auth=self._auth,
                 timeout=aiohttp.ClientTimeout(total=240),
             ) as response:
                 if response.status in (401, 403):
                     raise HWGroupAuthError("no permission to upload firmware")
-                body = await response.text(errors="replace")
-                if response.status != 200 or "Successfully uploaded" not in body:
-                    raise HWGroupError(f"firmware upload rejected (HTTP {response.status})")
+                text = await response.text(errors="replace")
+                if response.status != 200 or "Successfully uploaded" not in text:
+                    snippet = " ".join(text.split())[:160]
+                    raise HWGroupError(
+                        f"firmware upload rejected (HTTP {response.status}): {snippet}"
+                    )
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise HWGroupConnectionError(f"{type(err).__name__}: {err}") from err
 
