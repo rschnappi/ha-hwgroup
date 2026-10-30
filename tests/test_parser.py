@@ -86,3 +86,9 @@ def test_output_mode_and_gateway_update_status():
     status = parse_status(read("sms_status.xml"))
     assert status["update_version"] == "1.4.1.2958"
     assert status["update_state"] == "Download done. Please restart."
+
+
+def test_gateway_placeholder_without_pending_update():
+    status = parse_status(b"<r><nuv>---</nuv><nus>---</nus><CntSmsOK>1</CntSmsOK></r>")
+    assert "update_version" not in status and "update_state" not in status
+    assert status["sms_sent"] == 1
