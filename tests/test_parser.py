@@ -77,3 +77,12 @@ def test_result_ok():
     assert result_ok(b"<Root><Rslt>1</Rslt></Root>")
     assert result_ok("<Rslt> 1 </Rslt>")
     assert not result_ok(b"<Rslt>0</Rslt>")
+
+
+def test_output_mode_and_gateway_update_status():
+    data = parse_values(read("poseidon_values.xml"))
+    assert data.outputs["201"].mode == 0
+    assert data.outputs["202"].mode == 3
+    status = parse_status(read("sms_status.xml"))
+    assert status["update_version"] == "1.4.1.2958"
+    assert status["update_state"] == "Download done. Please restart."

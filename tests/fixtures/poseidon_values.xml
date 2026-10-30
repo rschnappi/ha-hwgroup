@@ -19,6 +19,7 @@
 <Entry><ID>102</ID><Name>Wasser hinten</Name><Value>0</Value><State>1</State></Entry>
 </BinaryInSet>
 <OutputSet>
-<Entry><ID>201</ID><Name>Relais 1</Name><Value>0</Value></Entry>
+<Entry><ID>201</ID><Name>Relais 1</Name><Value>0</Value><Mode>0</Mode></Entry>
+<Entry><ID>202</ID><Name>Relais 2</Name><Value>1</Value><Mode>3</Mode></Entry>
 </OutputSet>
 </Root>

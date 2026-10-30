@@ -66,12 +66,28 @@ class HWGroupSwitch(HWGroupEntity, SwitchEntity):
         channel = self._channel
         return channel.is_on if channel else None
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Show whether the device controls the output itself."""
+        channel = self._channel
+        return {"manual_mode": channel.mode == 0} if channel and channel.mode is not None else {}
+
     async def _set(self, on: bool) -> None:
+        channel = self._channel
+        if channel is not None and channel.mode not in (None, 0):
+            raise HomeAssistantError(
+                f"{self.name} is controlled by the device itself (mode {channel.mode}); "
+                "set it to manual control in the device's web interface first"
+            )
         try:
             await self.coordinator.api.async_set_output(self.channel_id, on)
         except HWGroupError as err:
             raise HomeAssistantError(f"Switching {self.name} failed: {err}") from err
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
+        if self.is_on is not on:
+            raise HomeAssistantError(
+                f"{self.name}: the device did not accept the new state"
+            )
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the output on."""
