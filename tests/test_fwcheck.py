@@ -37,6 +37,7 @@ async def test_poseidon_update_entity(hass, poseidon_entry, aioclient_mock):
 
 
 async def test_firmware_lookup_failure_does_not_break_setup(hass, poseidon_entry, aioclient_mock):
+    aioclient_mock.clear_requests()  # autouse-Mock der Seite entfernen, sonst gewinnt er
     aioclient_mock.get(f"{BASE}/values.xml", content=fixture_bytes("poseidon_values.xml"))
     aioclient_mock.get(PRODUCT_PAGE, status=503)
     await hass.config_entries.async_setup(poseidon_entry.entry_id)
