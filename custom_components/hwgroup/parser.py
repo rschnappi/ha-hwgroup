@@ -232,9 +232,10 @@ def parse_status(raw: bytes | str) -> dict[str, float | int | str]:
     if (text := _text(root, "pin_tstatus")) is not None:
         status["sim_status"] = text
     # Firmware-Update, das das Gateway selbst gefunden/geladen hat (z. B. "1.4.1.2958")
-    if (text := _text(root, "nuv")) is not None:
+    # Ohne offenes Update meldet das Geraet "---" (nur Striche) statt eines leeren Werts.
+    if (text := _text(root, "nuv")) is not None and text.strip("-"):
         status["update_version"] = text
-    if (text := _text(root, "nus")) is not None:
+    if (text := _text(root, "nus")) is not None and text.strip("-"):
         status["update_state"] = text
     return status
 
