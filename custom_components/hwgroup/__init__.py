@@ -36,6 +36,7 @@ PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
     Platform.NOTIFY,
+    Platform.UPDATE,
 ]
 
 SEND_SMS_SCHEMA = vol.Schema(

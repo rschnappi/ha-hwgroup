@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from urllib.parse import quote
+from xml.sax.saxutils import escape
 
 import aiohttp
 from yarl import URL
@@ -85,9 +86,29 @@ class HWGroupApi:
         return data
 
     async def async_set_output(self, output_id: str, on: bool) -> None:
-        """Switch an output. The URL format is untested on real hardware."""
-        query = f"output.xml?id={quote(output_id, safe='')}&state={int(on)}"
-        await self._get(query)
+        """Switch an output (HW group XML protocol: POST BinaryOutSet, needs Mode 0).
+
+        Needs a user with write access to outputs if the device is secured.
+        """
+        body = (
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?><Root><BinaryOutSet><Entry>"
+            f"<ID>{escape(str(output_id))}</ID><Value>{int(on)}</Value>"
+            "</Entry></BinaryOutSet></Root>"
+        )
+        try:
+            async with self._session.post(
+                f"{self.base_url}/setup.xml",
+                data=body.encode(),
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                auth=self._auth,
+                timeout=self._timeout,
+            ) as response:
+                if response.status in (401, 403):
+                    raise HWGroupAuthError("no write access to the outputs")
+                if response.status >= 400:
+                    raise HWGroupConnectionError(f"HTTP {response.status}")
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            raise HWGroupConnectionError(f"{type(err).__name__}: {err}") from err
 
     async def _command(self, query: str) -> None:
         raw = await self._get(f"values.xml?{query}")

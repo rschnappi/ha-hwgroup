@@ -88,6 +88,11 @@
       "sms": {
         "name": "SMS"
       }
+    },
+    "update": {
+      "firmware": {
+        "name": "Firmware"
+      }
     }
   },
   "exceptions": {

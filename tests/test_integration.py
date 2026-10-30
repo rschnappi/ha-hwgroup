@@ -122,3 +122,39 @@ async def test_service_without_gateway_is_validation_error(hass, poseidon_entry,
         await hass.services.async_call(
             DOMAIN, "send_sms", {"phone_number": "+43676123456", "message": "x"}, blocking=True
         )
+
+
+async def test_switch_posts_xml_and_verifies(hass, poseidon_entry, aioclient_mock):
+    body_on = fixture_bytes("poseidon_values.xml").replace(
+        b"<ID>201</ID><Name>Relais 1</Name><Value>0</Value>",
+        b"<ID>201</ID><Name>Relais 1</Name><Value>1</Value>",
+    )
+    aioclient_mock.get(f"{BASE}/values.xml", content=fixture_bytes("poseidon_values.xml"))
+    await setup(hass, poseidon_entry)
+    eid = entity(hass, "switch", poseidon_entry, "switch_201")
+    aioclient_mock.clear_requests()
+    aioclient_mock.post(f"{BASE}/setup.xml", status=200, content=b"<Root/>")
+    aioclient_mock.get(f"{BASE}/values.xml", content=body_on)
+    await hass.services.async_call("switch", "turn_on", {"entity_id": eid}, blocking=True)
+    post = [c for c in aioclient_mock.mock_calls if c[0] == "POST"][0]
+    assert b"<ID>201</ID><Value>1</Value>" in post[2]
+    assert hass.states.get(eid).state == "on"
+
+
+async def test_switch_refuses_when_device_controls_output(hass, poseidon_entry, aioclient_mock):
+    aioclient_mock.get(f"{BASE}/values.xml", content=fixture_bytes("poseidon_values.xml"))
+    await setup(hass, poseidon_entry)
+    eid = entity(hass, "switch", poseidon_entry, "switch_202")
+    aioclient_mock.post(f"{BASE}/setup.xml", status=200, content=b"<Root/>")
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("switch", "turn_off", {"entity_id": eid}, blocking=True)
+    assert not [c for c in aioclient_mock.mock_calls if c[0] == "POST"]
+
+
+async def test_gateway_firmware_update_entity(hass, sms_entry, aioclient_mock):
+    mock_sms(aioclient_mock)
+    await setup(hass, sms_entry)
+    state = hass.states.get(entity(hass, "update", sms_entry, "firmware_update"))
+    assert state.state == "on"
+    assert state.attributes["installed_version"] == "1.3.5"
+    assert state.attributes["latest_version"] == "1.4.1"
