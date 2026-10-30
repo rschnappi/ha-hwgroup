@@ -1,0 +1,29 @@
+send_sms:
+  fields:
+    phone_number:
+      required: true
+      example: "+43676123456"
+      selector:
+        text:
+    message:
+      required: true
+      example: "Server room too hot"
+      selector:
+        text:
+          multiline: true
+    device_id:
+      required: false
+      selector:
+        text:
+
+call_number:
+  fields:
+    phone_number:
+      required: true
+      example: "+43676123456"
+      selector:
+        text:
+    device_id:
+      required: false
+      selector:
+        text:

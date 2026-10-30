@@ -1,0 +1,132 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up HW group device",
+        "description": "Connect a Poseidon/Damocles sensor unit or an HWg-SMS-GW3 gateway. The device type is detected automatically.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "device_name": "Device name (optional)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "The credentials for {name} were rejected.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure HW group device",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "device_name": "Device name (optional)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the device",
+      "invalid_auth": "Invalid credentials",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "reauth_successful": "Re-authentication successful",
+      "reconfigure_successful": "Reconfiguration successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HW group options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "invert_binary_sensors": "Invert these inputs",
+          "default_recipient": "Default SMS recipient (enables the notify entity)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "signal_strength": {
+        "name": "Signal strength"
+      },
+      "signal_quality": {
+        "name": "Signal quality"
+      },
+      "network_operator": {
+        "name": "Network operator"
+      },
+      "network_status": {
+        "name": "Network status"
+      },
+      "sms_sent": {
+        "name": "SMS sent"
+      },
+      "sms_errors": {
+        "name": "SMS errors"
+      },
+      "calls_ok": {
+        "name": "Calls placed"
+      },
+      "call_errors": {
+        "name": "Call errors"
+      },
+      "sim_status": {
+        "name": "SIM status"
+      }
+    },
+    "notify": {
+      "sms": {
+        "name": "SMS"
+      }
+    }
+  },
+  "exceptions": {
+    "no_gateway": {
+      "message": "No loaded HW group SMS gateway found"
+    }
+  },
+  "services": {
+    "send_sms": {
+      "name": "Send SMS",
+      "description": "Sends an SMS through an HWg-SMS-GW3 gateway.",
+      "fields": {
+        "phone_number": {
+          "name": "Phone number",
+          "description": "Recipient in international format."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Text of the SMS."
+        },
+        "device_id": {
+          "name": "Gateway",
+          "description": "Config entry id or device id of the gateway. Empty = first SMS gateway."
+        }
+      }
+    },
+    "call_number": {
+      "name": "Ring number",
+      "description": "Lets the gateway ring a number and hang up.",
+      "fields": {
+        "phone_number": {
+          "name": "Phone number",
+          "description": "Number to ring."
+        },
+        "device_id": {
+          "name": "Gateway",
+          "description": "Config entry id or device id of the gateway. Empty = first SMS gateway."
+        }
+      }
+    }
+  }
+}

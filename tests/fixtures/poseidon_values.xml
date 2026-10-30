@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<Root xmlns="http://www.etech.cz/XMLSchema/poseidon/values.xsd">
+<Agent>
+<Version>3.0.6</Version>
+<DeviceName>MON-REM</DeviceName>
+<Title>Poseidon2 3268</Title>
+<SerialNumber>0000000002</SerialNumber>
+<MAC>00:00:00:00:00:02</MAC>
+</Agent>
+<SenSet>
+<Entry><ID>1</ID><Name>Temp Rack</Name><Value>25.3</Value><Units>C</Units><State>0</State></Entry>
+<Entry><ID>2</ID><Name>Humidity</Name><Value>41,5</Value><Units>%</Units><State>0</State></Entry>
+<Entry><ID>3</ID><Name>Kein Fuehler</Name><Value>-999.9</Value><Units>C</Units><State>0</State></Entry>
+<Entry><ID>4</ID><Name>Druck</Name><Value>1013.2</Value><Units>hPa</Units><State>0</State></Entry>
+<Entry><ID>5</ID><Name>Status</Name><Value>OK</Value><Units></Units><State>0</State></Entry>
+</SenSet>
+<BinaryInSet>
+<Entry><ID>101</ID><Name>Tür</Name><Value>1</Value><State>0</State></Entry>
+<Entry><ID>102</ID><Name>Wasser hinten</Name><Value>0</Value><State>1</State></Entry>
+</BinaryInSet>
+<OutputSet>
+<Entry><ID>201</ID><Name>Relais 1</Name><Value>0</Value></Entry>
+</OutputSet>
+</Root>

@@ -1,0 +1,18 @@
+{
+  "entity": {
+    "sensor": {
+      "network_operator": {"default": "mdi:cellphone-wireless"},
+      "network_status": {"default": "mdi:network"},
+      "signal_quality": {"default": "mdi:signal"},
+      "sms_sent": {"default": "mdi:message-check"},
+      "sms_errors": {"default": "mdi:message-alert"},
+      "calls_ok": {"default": "mdi:phone-check"},
+      "call_errors": {"default": "mdi:phone-alert"},
+      "sim_status": {"default": "mdi:sim"}
+    }
+  },
+  "services": {
+    "send_sms": {"service": "mdi:message-text"},
+    "call_number": {"service": "mdi:phone-ring"}
+  }
+}
