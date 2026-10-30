@@ -49,6 +49,23 @@ def _short(version: str) -> str:
     return ".".join(parts[:3]) if len(parts) > 3 else version
 
 
+async def _wait_for_version(api, version: str) -> None:
+    """Wait until the restarted device reports the new version."""
+    await asyncio.sleep(RESTART_DELAY)
+    deadline = asyncio.get_running_loop().time() + RESTART_TIMEOUT
+    while True:
+        try:
+            if await api.async_read_version() == version:
+                return
+        except HWGroupError:
+            pass  # noch im Neustart
+        if asyncio.get_running_loop().time() > deadline:
+            raise HomeAssistantError(
+                f"{api.host} meldet nach {RESTART_TIMEOUT} s nicht Version {version}"
+            )
+        await asyncio.sleep(POLL_INTERVAL)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: HWGroupConfigEntry,
@@ -74,6 +91,35 @@ class HWGroupGatewayUpdate(HWGroupEntity, UpdateEntity):
         """Initialize."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_firmware_update"
+        self._attr_supported_features = (
+            UpdateEntityFeature.INSTALL | UpdateEntityFeature.PROGRESS
+        )
+
+    async def async_install(self, version: str | None, backup: bool, **kwargs: Any) -> None:
+        """Restart the gateway so it applies the firmware it has already downloaded."""
+        target = self.latest_version
+        if target is None or target == self.installed_version:
+            return
+        state = str(self.coordinator.data.status.get("update_state") or "")
+        if "download done" not in state.lower():
+            raise HomeAssistantError(
+                "Das Gateway hat die neue Firmware noch nicht heruntergeladen "
+                f"(Status: {state or 'unbekannt'}). In der Weboberfläche unter System "
+                "zuerst 'Download' ausführen."
+            )
+        async with INSTALL_LOCK:
+            self._attr_in_progress = True
+            self.async_write_ha_state()
+            try:
+                try:
+                    await self.coordinator.api.async_restart_gateway()
+                except HWGroupError as err:
+                    raise HomeAssistantError(f"Neustart des Gateways fehlgeschlagen: {err}") from err
+                await _wait_for_version(self.coordinator.api, target)
+            finally:
+                self._attr_in_progress = False
+                self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
 
     @property
     def installed_version(self) -> str | None:
@@ -194,17 +240,4 @@ class HWGroupPoseidonUpdate(HWGroupEntity, UpdateEntity):
         return payload
 
     async def _wait_for(self, version: str) -> None:
-        """Wait until the restarted device reports the new version."""
-        await asyncio.sleep(RESTART_DELAY)
-        deadline = asyncio.get_running_loop().time() + RESTART_TIMEOUT
-        while True:
-            try:
-                if await self.coordinator.api.async_read_version() == version:
-                    return
-            except HWGroupError:
-                pass  # noch im Neustart
-            if asyncio.get_running_loop().time() > deadline:
-                raise HomeAssistantError(
-                    f"{self.coordinator.api.host} meldet nach {RESTART_TIMEOUT} s nicht Version {version}"
-                )
-            await asyncio.sleep(POLL_INTERVAL)
+        await _wait_for_version(self.coordinator.api, version)

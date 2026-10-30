@@ -136,6 +136,24 @@ class HWGroupApi:
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise HWGroupConnectionError(f"{type(err).__name__}: {err}") from err
 
+    async def async_restart_gateway(self) -> None:
+        """Restart the SMS gateway (web form 'System Restart'); it applies a downloaded firmware."""
+        try:
+            async with self._session.post(
+                f"{self.base_url}/sysinfo.xml",
+                data={"SysRestart": "Restart"},
+                auth=self._auth,
+                timeout=self._timeout,
+            ) as response:
+                if response.status in (401, 403):
+                    raise HWGroupAuthError("no permission to restart the gateway")
+                if response.status >= 400:
+                    raise HWGroupConnectionError(f"HTTP {response.status}")
+        except aiohttp.ServerDisconnectedError:
+            return  # das Geraet startet sofort neu und kappt die Verbindung
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            raise HWGroupConnectionError(f"{type(err).__name__}: {err}") from err
+
     async def _command(self, query: str) -> None:
         raw = await self._get(f"values.xml?{query}")
         if not result_ok(raw):

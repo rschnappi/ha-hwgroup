@@ -108,3 +108,42 @@ async def test_install_refuses_implausible_download_and_rejected_upload(hass, po
     _install_mocks(aioclient_mock, upload_ok=False)
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call("update", "install", {"entity_id": eid}, blocking=True)
+
+
+async def _setup_gateway(hass, sms_entry, aioclient_mock, monkeypatch, status="sms_status.xml"):
+    for name, value in (("RESTART_DELAY", 0), ("POLL_INTERVAL", 0), ("RESTART_TIMEOUT", 1)):
+        monkeypatch.setattr(f"custom_components.hwgroup.update.{name}", value)
+    aioclient_mock.get(f"{BASE}/values.xml", content=fixture_bytes("sms_values.xml"))
+    aioclient_mock.get(f"{BASE}/status.xml", content=fixture_bytes(status))
+    await hass.config_entries.async_setup(sms_entry.entry_id)
+    await hass.async_block_till_done()
+    return er.async_get(hass).async_get_entity_id(
+        "update", DOMAIN, f"{sms_entry.entry_id}_firmware_update"
+    )
+
+
+async def test_gateway_install_restarts_and_verifies(hass, sms_entry, aioclient_mock, monkeypatch):
+    eid = await _setup_gateway(hass, sms_entry, aioclient_mock, monkeypatch)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(
+        f"{BASE}/values.xml",
+        content=fixture_bytes("sms_values.xml").replace(b"<Version>1.3.5</Version>", b"<Version>1.4.1</Version>"),
+    )
+    aioclient_mock.post(f"{BASE}/sysinfo.xml", text="ok")
+    await hass.services.async_call("update", "install", {"entity_id": eid}, blocking=True)
+    posts = [c for c in aioclient_mock.mock_calls if c[0] == "POST"]
+    assert len(posts) == 1 and str(posts[0][1]).endswith("/sysinfo.xml")
+
+
+async def test_gateway_install_refuses_when_not_downloaded(hass, sms_entry, aioclient_mock, monkeypatch):
+    import pytest
+    from homeassistant.exceptions import HomeAssistantError
+
+    eid = await _setup_gateway(hass, sms_entry, aioclient_mock, monkeypatch)
+    # Status "noch nichts geladen": Entity aus dem Zustand neu aufbauen
+    status = sms_entry.runtime_data.coordinator.data.status
+    status["update_state"] = "New version available"
+    aioclient_mock.post(f"{BASE}/sysinfo.xml", text="ok")
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("update", "install", {"entity_id": eid}, blocking=True)
+    assert not [c for c in aioclient_mock.mock_calls if c[0] == "POST"]
