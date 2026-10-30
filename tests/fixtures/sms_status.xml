@@ -1,0 +1,9 @@
+<r>
+<t>08:30:18</t>
+<d>30.10.2026</d>
+<ModemSigQ>-69 dBm (70 %)</ModemSigQ><ModemSigRssi>22</ModemSigRssi><ModemNetReg>Registered, roaming</ModemNetReg><ModemNetOp>A1</ModemNetOp>
+<CntSmsOK>10619</CntSmsOK><CntRingOK>8</CntRingOK><CntSmsError>0</CntSmsError><CntRingError>0</CntRingError><pin_tstatus>PIN not required</pin_tstatus><GsmIn id="1"><Cmd>0</Cmd>
+<Nmr>+43000000000</Nmr>
+<Text>Test &quot;gut&quot; &#10; Text</Text>
+<Time>16.06.2025 11:53:05 </Time>
+</GsmIn></r>

@@ -1,0 +1,132 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HW-group-Gerät einrichten",
+        "description": "Poseidon/Damocles-Messeinheit oder HWg-SMS-GW3-Gateway verbinden. Der Gerätetyp wird automatisch erkannt.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "device_name": "Gerätename (optional)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Erneut anmelden",
+        "description": "Die Zugangsdaten für {name} wurden abgelehnt.",
+        "data": {
+          "username": "Benutzername",
+          "password": "Passwort"
+        }
+      },
+      "reconfigure": {
+        "title": "HW-group-Gerät neu konfigurieren",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "device_name": "Gerätename (optional)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen",
+      "invalid_auth": "Ungültige Zugangsdaten",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "reauth_successful": "Anmeldung erfolgreich erneuert",
+      "reconfigure_successful": "Neukonfiguration erfolgreich"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HW-group-Optionen",
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "invert_binary_sensors": "Diese Eingänge invertieren",
+          "default_recipient": "Standard-SMS-Empfänger (aktiviert die notify-Entität)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "signal_strength": {
+        "name": "Signalstärke"
+      },
+      "signal_quality": {
+        "name": "Signalqualität"
+      },
+      "network_operator": {
+        "name": "Netzbetreiber"
+      },
+      "network_status": {
+        "name": "Netzstatus"
+      },
+      "sms_sent": {
+        "name": "SMS gesendet"
+      },
+      "sms_errors": {
+        "name": "SMS-Fehler"
+      },
+      "calls_ok": {
+        "name": "Anrufe ausgelöst"
+      },
+      "call_errors": {
+        "name": "Anruffehler"
+      },
+      "sim_status": {
+        "name": "SIM-Status"
+      }
+    },
+    "notify": {
+      "sms": {
+        "name": "SMS"
+      }
+    }
+  },
+  "exceptions": {
+    "no_gateway": {
+      "message": "Kein geladenes HW-group-SMS-Gateway gefunden"
+    }
+  },
+  "services": {
+    "send_sms": {
+      "name": "SMS senden",
+      "description": "Sendet eine SMS über ein HWg-SMS-GW3-Gateway.",
+      "fields": {
+        "phone_number": {
+          "name": "Rufnummer",
+          "description": "Empfänger im internationalen Format."
+        },
+        "message": {
+          "name": "Nachricht",
+          "description": "Text der SMS."
+        },
+        "device_id": {
+          "name": "Gateway",
+          "description": "Config-Entry-ID oder Geräte-ID des Gateways. Leer = erstes SMS-Gateway."
+        }
+      }
+    },
+    "call_number": {
+      "name": "Nummer anrufen",
+      "description": "Lässt das Gateway eine Nummer anläuten und auflegen.",
+      "fields": {
+        "phone_number": {
+          "name": "Rufnummer",
+          "description": "Anzurufende Nummer."
+        },
+        "device_id": {
+          "name": "Gateway",
+          "description": "Config-Entry-ID oder Geräte-ID des Gateways. Leer = erstes SMS-Gateway."
+        }
+      }
+    }
+  }
+}
