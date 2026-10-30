@@ -110,6 +110,32 @@ class HWGroupApi:
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise HWGroupConnectionError(f"{type(err).__name__}: {err}") from err
 
+    async def async_read_version(self) -> str | None:
+        """Firmware version straight from the device (used while it restarts)."""
+        return parse_values(await self._get("values.xml")).info.version
+
+    async def async_upload_firmware(self, payload: bytes, filename: str) -> None:
+        """Upload a .hwg firmware to the web upload form; the device flashes and restarts."""
+        form = aiohttp.FormData()
+        form.add_field(
+            "filename", payload, filename=filename, content_type="application/octet-stream"
+        )
+        form.add_field("Submit", "Upload")
+        try:
+            async with self._session.post(
+                f"{self.base_url}/upload",
+                data=form,
+                auth=self._auth,
+                timeout=aiohttp.ClientTimeout(total=240),
+            ) as response:
+                if response.status in (401, 403):
+                    raise HWGroupAuthError("no permission to upload firmware")
+                body = await response.text(errors="replace")
+                if response.status != 200 or "Successfully uploaded" not in body:
+                    raise HWGroupError(f"firmware upload rejected (HTTP {response.status})")
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            raise HWGroupConnectionError(f"{type(err).__name__}: {err}") from err
+
     async def _command(self, query: str) -> None:
         raw = await self._get(f"values.xml?{query}")
         if not result_ok(raw):

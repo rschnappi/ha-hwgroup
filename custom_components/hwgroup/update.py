@@ -1,16 +1,40 @@
-"""Firmware availability (read-only: nothing is installed from Home Assistant)."""
+"""Firmware updates: gateway shows a pending firmware, Poseidon2 units can be flashed from HA."""
 
 from __future__ import annotations
 
-from homeassistant.components.update import UpdateEntity, UpdateEntityDescription
+import asyncio
+import hashlib
+import logging
+from typing import Any
+
+import aiohttp
+
+from homeassistant.components.update import (
+    UpdateEntity,
+    UpdateEntityDescription,
+    UpdateEntityFeature,
+)
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .api import HWGroupError
 from .const import DEVICE_TYPE_SMS_GATEWAY
 from .coordinator import HWGroupConfigEntry, HWGroupCoordinator
 from .entity import HWGroupEntity
 from .fwcheck import PRODUCT_PAGE, FirmwareCoordinator
+
+_LOGGER = logging.getLogger(__name__)
+
+# Nie zwei Geraete gleichzeitig flashen (Ueberwachung faellt sonst flaechendeckend aus).
+INSTALL_LOCK = asyncio.Lock()
+MIN_FIRMWARE_BYTES = 500_000
+MAX_FIRMWARE_BYTES = 3_000_000
+RESTART_DELAY = 30  # s: so lange braucht das Geraet mindestens fuer Flash + Neustart
+RESTART_TIMEOUT = 300  # s
+POLL_INTERVAL = 5
 
 DESCRIPTION = UpdateEntityDescription(
     key="firmware",
@@ -85,6 +109,9 @@ class HWGroupPoseidonUpdate(HWGroupEntity, UpdateEntity):
         self._firmware = firmware
         self._attr_unique_id = f"{entry.entry_id}_firmware_update"
         self._attr_release_url = PRODUCT_PAGE
+        self._attr_supported_features = (
+            UpdateEntityFeature.INSTALL | UpdateEntityFeature.PROGRESS
+        )
 
     async def async_added_to_hass(self) -> None:
         """Also follow the firmware lookup."""
@@ -112,3 +139,72 @@ class HWGroupPoseidonUpdate(HWGroupEntity, UpdateEntity):
             return None
         build = f", Build {latest.build}" if latest.build else ""
         return f"Veröffentlicht {latest.released}{build}"
+
+    async def async_install(self, version: str | None, backup: bool, **kwargs: Any) -> None:
+        """Download the published firmware and flash it, one device at a time.
+
+        The device restarts (about a minute offline). Success means the device reports
+        the new version afterwards; otherwise an error is raised and nothing is retried.
+        """
+        latest = self._firmware.data
+        if latest is None:
+            raise HomeAssistantError("Keine Firmware-Information von HW group verfügbar")
+        if version not in (None, latest.version):
+            raise HomeAssistantError(f"Nur die aktuelle Version {latest.version} kann installiert werden")
+        if latest.version == self.installed_version:
+            return
+
+        async with INSTALL_LOCK:
+            self._attr_in_progress = True
+            self.async_write_ha_state()
+            try:
+                payload = await self._download(latest.url)
+                _LOGGER.warning(
+                    "Flashing %s on %s: %s bytes, sha256 %s",
+                    latest.version,
+                    self.coordinator.api.host,
+                    len(payload),
+                    hashlib.sha256(payload).hexdigest(),
+                )
+                try:
+                    await self.coordinator.api.async_upload_firmware(
+                        payload, latest.url.rsplit("/", 1)[-1]
+                    )
+                except HWGroupError as err:
+                    raise HomeAssistantError(f"Firmware-Upload fehlgeschlagen: {err}") from err
+                await self._wait_for(latest.version)
+            finally:
+                self._attr_in_progress = False
+                self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
+
+    async def _download(self, url: str) -> bytes:
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as response:
+                if response.status != 200:
+                    raise HomeAssistantError(f"Firmware-Download fehlgeschlagen (HTTP {response.status})")
+                payload = await response.read()
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise HomeAssistantError(f"Firmware-Download fehlgeschlagen: {err}") from err
+        if not MIN_FIRMWARE_BYTES <= len(payload) <= MAX_FIRMWARE_BYTES:
+            raise HomeAssistantError(
+                f"Firmware-Datei hat eine unplausible Größe ({len(payload)} Bytes), Abbruch"
+            )
+        return payload
+
+    async def _wait_for(self, version: str) -> None:
+        """Wait until the restarted device reports the new version."""
+        await asyncio.sleep(RESTART_DELAY)
+        deadline = asyncio.get_running_loop().time() + RESTART_TIMEOUT
+        while True:
+            try:
+                if await self.coordinator.api.async_read_version() == version:
+                    return
+            except HWGroupError:
+                pass  # noch im Neustart
+            if asyncio.get_running_loop().time() > deadline:
+                raise HomeAssistantError(
+                    f"{self.coordinator.api.host} meldet nach {RESTART_TIMEOUT} s nicht Version {version}"
+                )
+            await asyncio.sleep(POLL_INTERVAL)
