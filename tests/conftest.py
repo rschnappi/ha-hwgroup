@@ -45,3 +45,13 @@ def poseidon_entry(hass) -> MockConfigEntry:
     )
     entry.add_to_hass(hass)
     return entry
+
+
+@pytest.fixture(autouse=True)
+def mock_firmware_page(aioclient_mock):
+    """The HW group page is never fetched for real in tests."""
+    from custom_components.hwgroup.fwcheck import PRODUCT_PAGE
+
+    aioclient_mock.get(
+        PRODUCT_PAGE, text=(FIX / "hw_firmware_page.html").read_text(encoding="utf-8")
+    )
